@@ -159,3 +159,45 @@ class Invoice(db.Model):
     @property
     def overdue(self):
         return self.status == "unpaid" and self.due_date < date.today()
+
+
+class PosSale(OrderMixin, db.Model):
+    PAYMENT_METHODS = {"cash": "Cash", "card": "Card", "ewallet": "E-wallet"}
+
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now)
+    customer_id = db.Column(db.Integer, db.ForeignKey("customer.id"))
+    customer = db.relationship("Customer")
+    cashier_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    cashier = db.relationship("User")
+    payment_method = db.Column(db.String(20), nullable=False)
+    tendered = db.Column(MONEY)
+    status = db.Column(db.String(20), nullable=False, default="completed")
+    lines = db.relationship("PosSaleLine", backref="sale", cascade="all, delete-orphan")
+
+    @property
+    def number(self):
+        return f"POS-{self.id:05d}"
+
+    @property
+    def payment_label(self):
+        return self.PAYMENT_METHODS.get(self.payment_method, self.payment_method)
+
+    @property
+    def change(self):
+        if self.payment_method != "cash" or self.tendered is None:
+            return Decimal("0")
+        return Decimal(self.tendered) - self.total
+
+
+class PosSaleLine(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sale_id = db.Column(db.Integer, db.ForeignKey("pos_sale.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=False)
+    product = db.relationship("Product")
+    quantity = db.Column(db.Integer, nullable=False)
+    unit_price = db.Column(MONEY, nullable=False)
+
+    @property
+    def subtotal(self):
+        return Decimal(self.unit_price) * self.quantity

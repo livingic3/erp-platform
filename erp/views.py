@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from datetime import date
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 
@@ -8,7 +8,7 @@ from flask import (
 )
 from . import services
 from .models import (
-    Customer, Invoice, Product, PurchaseOrder, PurchaseOrderLine, SalesOrder,
+    Customer, Invoice, PosSale, Product, PurchaseOrder, PurchaseOrderLine, SalesOrder,
     SalesOrderLine, StockMovement, Supplier, User, adjust_stock, db,
 )
 from .services import ERPError
@@ -75,9 +75,12 @@ def logout():
 @login_required
 def dashboard():
     invoices = Invoice.query.all()
-    revenue = sum((i.amount for i in invoices), Decimal(0))
+    invoiced = sum((i.amount for i in invoices), Decimal(0))
     paid = sum((i.amount for i in invoices if i.status == "paid"), Decimal(0))
-    receivable = revenue - paid
+    receivable = invoiced - paid
+    pos_sales = PosSale.query.filter_by(status="completed").all()
+    pos_revenue = sum((s.total for s in pos_sales), Decimal(0))
+    revenue = invoiced + pos_revenue
     overdue = [i for i in invoices if i.overdue]
     products = Product.query.all()
     low_stock = [p for p in products if p.low_stock]
@@ -90,21 +93,26 @@ def dashboard():
         while m <= 0:
             m += 12
             y -= 1
-        months[(y, m)] = Decimal(0)
+        months[(y, m)] = [Decimal(0), Decimal(0)]
     for inv in invoices:
         key = (inv.issue_date.year, inv.issue_date.month)
         if key in months:
-            months[key] += inv.amount
+            months[key][0] += inv.amount
+    for sale in pos_sales:
+        key = (sale.created_at.year, sale.created_at.month)
+        if key in months:
+            months[key][1] += sale.total
 
     return render_template(
         "dashboard.html",
-        revenue=revenue, receivable=receivable, overdue=overdue,
+        revenue=revenue, pos_revenue=pos_revenue, receivable=receivable, overdue=overdue,
         stock_value=stock_value, low_stock=low_stock,
         open_sales=SalesOrder.query.filter(SalesOrder.status.in_(["draft", "confirmed", "shipped"])).count(),
         open_purchases=PurchaseOrder.query.filter(PurchaseOrder.status.in_(["draft", "ordered"])).count(),
         recent_sales=SalesOrder.query.order_by(SalesOrder.id.desc()).limit(6).all(),
         chart_labels=[date(y, m, 1).strftime("%b %Y") for y, m in months],
-        chart_values=[float(v) for v in months.values()],
+        chart_invoiced=[float(v[0]) for v in months.values()],
+        chart_pos=[float(v[1]) for v in months.values()],
     )
 
 
@@ -309,6 +317,77 @@ def order_action(kind, oid, action):
         db.session.rollback()
         flash(str(e), "danger")
     return redirect(url_for("erp.order_detail", kind=kind, oid=oid))
+
+
+# ---------- point of sale ----------
+
+@bp.route("/pos", methods=["GET", "POST"])
+@login_required
+def pos():
+    all_products = Product.query.order_by(Product.name).all()
+    customers = Customer.query.order_by(Customer.name).all()
+    if request.method == "POST":
+        f = request.form
+        try:
+            parsed = services.parse_lines(f, {p.id: p for p in all_products}, "unit_price")
+            lines = [(p, qty, Decimal(p.unit_price)) for p, qty, _ in parsed]
+            customer = None
+            if f.get("customer_id"):
+                customer = db.session.get(Customer, _int(f.get("customer_id"), "Customer"))
+                if customer is None:
+                    raise ERPError("Unknown customer.")
+            raw = f.get("tendered", "").strip()
+            tendered = _dec(raw, "Cash tendered") if raw else None
+            sale = PosSale(customer=customer, cashier=g.user, payment_method=f.get("payment_method", ""))
+            services.pos_checkout(sale, lines, tendered)
+            db.session.commit()
+            flash(f"{sale.number} completed.", "success")
+            return redirect(url_for("erp.pos_receipt", sid=sale.id))
+        except ERPError as e:
+            db.session.rollback()
+            flash(str(e), "danger")
+    catalog = [dict(id=p.id, sku=p.sku, name=p.name, category=p.category,
+                    price=float(p.unit_price), stock=p.qty_on_hand) for p in all_products]
+    return render_template("pos.html", products=all_products, catalog=catalog, customers=customers,
+                           methods=PosSale.PAYMENT_METHODS)
+
+
+@bp.route("/pos/sales")
+@login_required
+def pos_sales():
+    try:
+        day = date.fromisoformat(request.args.get("day", ""))
+    except ValueError:
+        day = date.today()
+    start = datetime.combine(day, time.min)
+    sales = (PosSale.query.filter(PosSale.created_at >= start, PosSale.created_at < start + timedelta(days=1))
+             .order_by(PosSale.id.desc()).all())
+    completed = [s for s in sales if s.status == "completed"]
+    by_method = {label: sum((s.total for s in completed if s.payment_method == key), Decimal(0))
+                 for key, label in PosSale.PAYMENT_METHODS.items()}
+    return render_template("pos_sales.html", sales=sales, day=day, count=len(completed),
+                           total=sum((s.total for s in completed), Decimal(0)), by_method=by_method,
+                           prev_day=day - timedelta(days=1), next_day=day + timedelta(days=1))
+
+
+@bp.route("/pos/sales/<int:sid>")
+@login_required
+def pos_receipt(sid):
+    return render_template("pos_receipt.html", sale=get_or_404(PosSale, sid))
+
+
+@bp.route("/pos/sales/<int:sid>/void", methods=["POST"])
+@admin_required
+def pos_void(sid):
+    sale = get_or_404(PosSale, sid)
+    try:
+        services.void_pos_sale(sale)
+        db.session.commit()
+        flash(f"{sale.number} voided; stock returned.", "success")
+    except ERPError as e:
+        db.session.rollback()
+        flash(str(e), "danger")
+    return redirect(url_for("erp.pos_receipt", sid=sid))
 
 
 # ---------- invoices ----------

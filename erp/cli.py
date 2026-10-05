@@ -1,13 +1,14 @@
 import os
+import math
 import random
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 import click
 
 from . import services
 from .models import (
-    Customer, Product, PurchaseOrder, PurchaseOrderLine, SalesOrder,
+    Customer, PosSale, Product, PurchaseOrder, PurchaseOrderLine, SalesOrder,
     SalesOrderLine, Supplier, User, adjust_stock, db,
 )
 
@@ -78,6 +79,19 @@ def seed_demo():
             inv.due_date = so.order_date + timedelta(days=30)
             if stage == 4:
                 services.mark_invoice_paid(inv)
+
+    cashier = User.query.filter_by(username="admin").first()
+    for i in range(24):
+        method = rng.choice(["cash", "cash", "card", "ewallet"])
+        sale = PosSale(cashier=cashier, payment_method=method,
+                       customer=rng.choice(customers) if rng.random() < 0.2 else None)
+        lines = [(p, rng.randint(1, 3), p.unit_price) for p in rng.sample(products, rng.randint(1, 3))]
+        total = sum(Decimal(price) * qty for _, qty, price in lines)
+        tendered = Decimal(math.ceil(total / 10) * 10) if method == "cash" else None
+        services.pos_checkout(sale, lines, tendered)
+        sale.created_at = datetime.now().replace(second=0, microsecond=0) - timedelta(
+            days=0 if i < 5 else rng.randint(1, 60), minutes=rng.randint(0, 600))
+    services.void_pos_sale(sale)
 
     low = products[5]
     adjust_stock(low, -(low.qty_on_hand - 2), "adjustment", "demo")

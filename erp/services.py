@@ -1,8 +1,9 @@
 from collections import defaultdict
+from itertools import zip_longest
 from datetime import date
 from decimal import Decimal
 
-from .models import Invoice, adjust_stock, db
+from .models import Invoice, PosSale, PosSaleLine, adjust_stock, db
 
 
 class ERPError(Exception):
@@ -77,6 +78,44 @@ def cancel_purchase_order(order):
     order.status = "cancelled"
 
 
+def _check_stock(lines):
+    needed = defaultdict(int)
+    for product, qty, _ in lines:
+        needed[product] += qty
+    short = [f"{p.sku} (need {q}, have {p.qty_on_hand})" for p, q in needed.items() if p.qty_on_hand < q]
+    if short:
+        raise ERPError("Insufficient stock: " + ", ".join(short))
+
+
+def pos_checkout(sale, lines, tendered=None):
+    """Complete a POS sale: validate payment and stock, record lines, deduct stock."""
+    if sale.payment_method not in PosSale.PAYMENT_METHODS:
+        raise ERPError("Select a payment method.")
+    _check_stock(lines)
+    total = sum((Decimal(price) * qty for _, qty, price in lines), Decimal("0"))
+    if sale.payment_method == "cash":
+        if tendered is None or tendered < total:
+            raise ERPError("Cash tendered is less than the total.")
+        sale.tendered = tendered
+    else:
+        sale.tendered = total
+    for product, qty, price in lines:
+        sale.lines.append(PosSaleLine(product=product, quantity=qty, unit_price=price))
+    db.session.add(sale)
+    db.session.flush()
+    for line in sale.lines:
+        adjust_stock(line.product, -line.quantity, "pos", sale.number)
+    return sale
+
+
+def void_pos_sale(sale):
+    if sale.status != "completed":
+        raise ERPError(f"{sale.number} is already {sale.status}.")
+    for line in sale.lines:
+        adjust_stock(line.product, line.quantity, "pos-void", sale.number)
+    sale.status = "voided"
+
+
 SALES_ACTIONS = {
     "confirm": confirm_sales_order,
     "ship": ship_sales_order,
@@ -94,8 +133,8 @@ PURCHASE_ACTIONS = {
 def parse_lines(form, products, price_field):
     """Build (product, quantity, price) tuples from repeated form fields."""
     lines = []
-    for pid, qty, price in zip(
-        form.getlist("product_id"), form.getlist("quantity"), form.getlist("price")
+    for pid, qty, price in zip_longest(
+        form.getlist("product_id"), form.getlist("quantity"), form.getlist("price"), fillvalue=""
     ):
         if not pid:
             continue

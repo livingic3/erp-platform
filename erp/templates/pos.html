@@ -1,0 +1,166 @@
+{% extends "base.html" %}{% block title %}Point of Sale{% endblock %}
+{% block content %}
+<style>
+  .pos-tile { cursor:pointer; transition:transform .05s; }
+  .pos-tile:active { transform:scale(.97); }
+  .pos-tile.out { opacity:.45; cursor:not-allowed; }
+  #cart td { vertical-align:middle; }
+</style>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Point of Sale</h3>
+  <a class="btn btn-outline-secondary" href="{{ url_for('erp.pos_sales') }}"><i class="bi bi-receipt-cutoff"></i> Today's sales</a>
+</div>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="input-group mb-3">
+      <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
+      <input id="search" class="form-control form-control-lg" placeholder="Search name or scan SKU, then Enter" autocomplete="off" autofocus>
+    </div>
+    <div class="row g-2" id="grid">
+      {% for p in products %}
+      <div class="col-6 col-md-4 col-xl-3 tile-wrap" data-search="{{ (p.sku ~ ' ' ~ p.name ~ ' ' ~ p.category)|lower }}" data-sku="{{ p.sku|lower }}">
+        <div class="card p-2 h-100 pos-tile {{ 'out' if p.qty_on_hand <= 0 }}" data-id="{{ p.id }}">
+          <div class="small text-muted">{{ p.sku }}</div>
+          <div class="fw-semibold lh-sm">{{ p.name }}</div>
+          <div class="mt-auto d-flex justify-content-between align-items-end pt-2">
+            <span class="fw-bold text-primary">{{ p.unit_price|money }}</span>
+            <span class="small {{ 'text-danger' if p.low_stock else 'text-muted' }}">{{ p.qty_on_hand }} left</span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <form method="post" class="card p-3" id="checkout">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+      <div id="lines"></div>
+      <h5 class="d-flex justify-content-between">Cart <button type="button" class="btn btn-sm btn-link text-danger p-0" id="clear">Clear</button></h5>
+      <table class="table table-sm mb-2"><tbody id="cart"></tbody></table>
+      <div id="empty" class="text-muted text-center py-4">Tap a product to add it.</div>
+      <div class="d-flex justify-content-between fs-4 fw-bold border-top pt-2 mb-3"><span>Total</span><span id="total" class="text-nowrap"></span></div>
+      <label class="form-label small text-muted mb-1">Customer</label>
+      <select name="customer_id" class="form-select mb-3">
+        <option value="">Walk-in customer</option>
+        {% for c in customers %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+      </select>
+      <label class="form-label small text-muted mb-1">Payment</label>
+      <div class="btn-group w-100 mb-3" role="group">
+        {% for key, label in methods.items() %}
+        <input type="radio" class="btn-check" name="payment_method" id="pm-{{ key }}" value="{{ key }}" {{ 'checked' if loop.first }}>
+        <label class="btn btn-outline-primary" for="pm-{{ key }}">{{ label }}</label>
+        {% endfor %}
+      </div>
+      <div id="cash-box">
+        <label class="form-label small text-muted mb-1">Cash tendered</label>
+        <div class="input-group mb-2"><span class="input-group-text">{{ currency }}</span>
+          <input name="tendered" id="tendered" type="number" step="0.01" min="0" class="form-control form-control-lg"></div>
+        <div class="d-flex gap-1 mb-2 flex-wrap" id="quick">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-amt="exact">Exact</button>
+          {% for a in [10, 20, 50, 100] %}<button type="button" class="btn btn-sm btn-outline-secondary" data-amt="{{ a }}">{{ currency }} {{ a }}</button>{% endfor %}
+        </div>
+        <div class="d-flex justify-content-between fs-5 mb-3"><span>Change</span><span id="change" class="fw-semibold"></span></div>
+      </div>
+      <button class="btn btn-success btn-lg w-100" id="charge" disabled><i class="bi bi-check2-circle"></i> Charge <span id="charge-amt"></span></button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const catalog = Object.fromEntries({{ catalog|tojson }}.map(p => [p.id, p]));
+const cur = {{ currency|tojson }};
+const fmt = v => cur + ' ' + v.toLocaleString('en-MY', {minimumFractionDigits:2, maximumFractionDigits:2});
+const cents = v => Math.round(v * 100);
+const cart = new Map();
+const $ = id => document.getElementById(id);
+
+function add(id, n = 1) {
+  const p = catalog[id], q = (cart.get(id) || 0) + n;
+  if (q > p.stock) { alert(`Only ${p.stock} of ${p.name} in stock.`); return; }
+  if (q <= 0) cart.delete(id); else cart.set(id, q);
+  render();
+}
+
+function total() {
+  let t = 0;
+  cart.forEach((q, id) => t += cents(catalog[id].price) * q);
+  return t / 100;
+}
+
+function render() {
+  const body = $('cart'), lines = $('lines');
+  body.replaceChildren(); lines.replaceChildren();
+  cart.forEach((q, id) => {
+    const p = catalog[id], tr = document.createElement('tr');
+    const name = document.createElement('td');
+    name.textContent = p.name;
+    const small = document.createElement('div');
+    small.className = 'small text-muted'; small.textContent = fmt(p.price) + ' each';
+    name.append(small);
+    const qty = document.createElement('td');
+    qty.className = 'text-nowrap';
+    for (const [label, n] of [['−', -1], [null, 0], ['+', 1]]) {
+      if (label === null) { const s = document.createElement('span'); s.className = 'mx-2 fw-semibold'; s.textContent = q; qty.append(s); continue; }
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn btn-sm btn-outline-secondary'; b.textContent = label;
+      b.onclick = () => add(id, n);
+      qty.append(b);
+    }
+    const sub = document.createElement('td');
+    sub.className = 'text-end text-nowrap'; sub.textContent = fmt(cents(p.price) * q / 100);
+    tr.append(name, qty, sub);
+    body.append(tr);
+    for (const [k, v] of [['product_id', id], ['quantity', q]]) {
+      const i = document.createElement('input');
+      i.type = 'hidden'; i.name = k; i.value = v; lines.append(i);
+    }
+  });
+  update();
+}
+
+function update() {
+  const t = total(), cash = document.querySelector('[name=payment_method]:checked').value === 'cash';
+  const tendered = parseFloat($('tendered').value);
+  $('empty').classList.toggle('d-none', cart.size > 0);
+  $('total').textContent = fmt(t);
+  $('charge-amt').textContent = fmt(t);
+  $('cash-box').classList.toggle('d-none', !cash);
+  $('tendered').disabled = !cash;
+  const enough = !isNaN(tendered) && cents(tendered) >= cents(t);
+  $('change').textContent = enough ? fmt((cents(tendered) - cents(t)) / 100) : '—';
+  $('change').className = 'fw-semibold ' + (!isNaN(tendered) && !enough ? 'text-danger' : '');
+  $('charge').disabled = cart.size === 0 || (cash && !enough);
+}
+
+document.querySelectorAll('.pos-tile').forEach(t => t.onclick = () => {
+  if (!t.classList.contains('out')) add(+t.dataset.id);
+});
+$('search').addEventListener('input', e => {
+  const q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll('.tile-wrap').forEach(w => w.classList.toggle('d-none', q && !w.dataset.search.includes(q)));
+});
+$('search').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const q = e.target.value.trim().toLowerCase();
+  const visible = [...document.querySelectorAll('.tile-wrap:not(.d-none)')];
+  const hit = visible.find(w => w.dataset.sku === q) || (visible.length === 1 ? visible[0] : null);
+  if (hit) {
+    hit.querySelector('.pos-tile').click();
+    e.target.value = '';
+    e.target.dispatchEvent(new Event('input'));
+  }
+});
+$('quick').addEventListener('click', e => {
+  const a = e.target.dataset.amt;
+  if (!a) return;
+  $('tendered').value = a === 'exact' ? total().toFixed(2) : a;
+  update();
+});
+$('tendered').addEventListener('input', update);
+document.querySelectorAll('[name=payment_method]').forEach(r => r.addEventListener('change', update));
+$('clear').onclick = () => { cart.clear(); render(); };
+render();
+</script>
+{% endblock %}

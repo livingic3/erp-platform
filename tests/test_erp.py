@@ -2,7 +2,7 @@ import pytest
 
 from erp import create_app
 from erp.cli import ensure_admin, seed_demo
-from erp.models import Customer, Invoice, Product, SalesOrder, StockMovement, Supplier, db
+from erp.models import Customer, Invoice, PosSale, Product, SalesOrder, StockMovement, Supplier, db
 
 
 @pytest.fixture
@@ -72,6 +72,36 @@ def test_stock_adjustment_cannot_go_negative(client):
     assert db.session.get(Product, 1).qty_on_hand == 3
 
 
+def test_pos_cash_sale_deducts_stock_and_gives_change(client):
+    r = client.post("/pos", data={"product_id": ["1"], "quantity": ["2"], "payment_method": "cash", "tendered": "50"})
+    assert r.status_code == 302
+    sale = db.session.get(PosSale, 1)
+    assert sale.total == 20 and sale.change == 30 and sale.status == "completed"
+    assert db.session.get(Product, 1).qty_on_hand == 3
+    assert StockMovement.query.filter_by(reason="pos", reference="POS-00001").count() == 1
+    assert b"RM 30.00" in client.get("/pos/sales/1").data
+
+
+def test_pos_rejects_short_cash_and_insufficient_stock(client):
+    r = client.post("/pos", data={"product_id": ["1"], "quantity": ["2"], "payment_method": "cash", "tendered": "5"},
+                    follow_redirects=True)
+    assert b"less than the total" in r.data
+    r = client.post("/pos", data={"product_id": ["1"], "quantity": ["9"], "payment_method": "card"},
+                    follow_redirects=True)
+    assert b"Insufficient stock" in r.data
+    assert PosSale.query.count() == 0 and db.session.get(Product, 1).qty_on_hand == 5
+
+
+def test_pos_ignores_client_price_and_void_restocks(client):
+    client.post("/pos", data={"product_id": ["1"], "quantity": ["1"], "price": ["0.01"], "payment_method": "card"})
+    sale = db.session.get(PosSale, 1)
+    assert sale.total == 10 and db.session.get(Product, 1).qty_on_hand == 4
+    client.post("/pos/sales/1/void")
+    client.post("/pos/sales/1/void")
+    assert sale.status == "voided" and db.session.get(Product, 1).qty_on_hand == 5
+    assert b"RM 0.00" in client.get("/pos/sales").data
+
+
 def test_csrf_enforced():
     app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://"})
     with app.app_context():
@@ -88,7 +118,9 @@ def test_all_pages_render_with_demo_data():
         for url in ["/", "/products", "/products/new", "/products/1/edit", "/inventory/movements",
                     "/customers", "/customers/new", "/customers/1/edit", "/suppliers",
                     "/sales", "/sales?status=draft", "/sales/new", "/sales/1", "/purchases", "/purchases/new",
-                    "/purchases/1", "/invoices", "/invoices?status=overdue", "/invoices/1", "/users"]:
+                    "/purchases/1", "/invoices", "/invoices?status=overdue", "/invoices/1", "/users",
+                    "/pos", "/pos/sales", "/pos/sales?day=bad", "/pos/sales/1"]:
             assert c.get(url).status_code == 200, url
         assert b"SWK-ERP" in c.get("/").data
         assert b"RM 12.50" in c.get("/products").data
+        assert PosSale.query.filter_by(status="voided").count() == 1
