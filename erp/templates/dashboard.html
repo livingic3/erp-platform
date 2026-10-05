@@ -16,7 +16,7 @@
 <div class="row g-3">
   <div class="col-lg-8"><div class="card p-3 h-100">
     <h6>Revenue (last 6 months)</h6>
-    <canvas id="revChart" height="110"></canvas>
+    <div style="height:260px"><canvas id="revChart"></canvas></div>
   </div></div>
   <div class="col-lg-4"><div class="card p-3 h-100">
     <h6 class="d-flex justify-content-between">Low stock <span class="badge bg-danger">{{ low_stock|length }}</span></h6>
@@ -45,7 +45,7 @@ new Chart(document.getElementById('revChart'), {type:'bar',
   data:{labels:{{ chart_labels|tojson }}, datasets:[
     {label:'Invoices', data:{{ chart_invoiced|tojson }}, backgroundColor:'#3b82f6', borderRadius:4},
     {label:'POS', data:{{ chart_pos|tojson }}, backgroundColor:'#10b981', borderRadius:4}]},
-  options:{plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{label:c=>c.dataset.label+': '+{{ currency|tojson }}+' '+c.parsed.y.toLocaleString('en-MY',{minimumFractionDigits:2})}}},
+  options:{maintainAspectRatio:false, plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{label:c=>c.dataset.label+': '+{{ currency|tojson }}+' '+c.parsed.y.toLocaleString('en-MY',{minimumFractionDigits:2})}}},
   scales:{x:{stacked:true}, y:{stacked:true, beginAtZero:true, ticks:{callback:v=>{{ currency|tojson }}+' '+v.toLocaleString('en-MY')}}}}});
 </script>
 {% endblock %}
