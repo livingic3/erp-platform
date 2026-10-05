@@ -1,13 +1,13 @@
 {% extends "base.html" %}{% block title %}{{ sale.number }}{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3 d-print-none" style="max-width:420px">
-  <h3 class="mb-0">{{ sale.number }} {{ status_badge(sale.status) }}</h3>
-  <div class="d-flex gap-2">
+<div class="d-flex justify-content-between align-items-center mb-3 d-print-none" style="max-width:460px">
+  <h4 class="mb-0 text-nowrap">{{ sale.number }} {{ status_badge(sale.status) }}</h4>
+  <div class="d-flex gap-2 text-nowrap">
     <button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
     <a class="btn btn-primary" href="{{ url_for('erp.pos') }}"><i class="bi bi-plus-lg"></i> New sale</a>
   </div>
 </div>
-<div class="card p-4" style="max-width:420px;font-family:ui-monospace,Menlo,Consolas,monospace">
+<div class="card p-4" style="max-width:460px;font-family:ui-monospace,Menlo,Consolas,monospace">
   <div class="text-center mb-3">
     <h5 class="mb-0"><i class="bi bi-boxes"></i> {{ app_name }}</h5>
     <div class="small">Receipt {{ sale.number }}</div>
