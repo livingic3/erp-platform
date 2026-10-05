@@ -1,4 +1,4 @@
-# Nimbus ERP
+# SWK-ERP
 
 A lightweight ERP built with Flask + SQLAlchemy (SQLite by default).
 
@@ -18,7 +18,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ```
 Log in as `admin` / `admin` (set `ERP_ADMIN_PASSWORD` before `init-db` to change it).
 
-Config via env vars: `SECRET_KEY` (set in production), `DATABASE_URL` (e.g. a Postgres URL), `ERP_CURRENCY` (default `$`).
+Config via env vars: `SECRET_KEY` (set in production), `DATABASE_URL` (e.g. a Postgres URL), `ERP_CURRENCY` (default `$`), `ERP_APP_NAME` (default `SWK-ERP`).
 
 ## Test
 ```bash

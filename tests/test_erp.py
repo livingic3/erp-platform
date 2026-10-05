@@ -90,3 +90,4 @@ def test_all_pages_render_with_demo_data():
                     "/sales", "/sales?status=draft", "/sales/new", "/sales/1", "/purchases", "/purchases/new",
                     "/purchases/1", "/invoices", "/invoices?status=overdue", "/invoices/1", "/users"]:
             assert c.get(url).status_code == 200, url
+        assert b"SWK-ERP" in c.get("/").data

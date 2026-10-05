@@ -15,6 +15,7 @@ def create_app(config=None):
         SQLALCHEMY_DATABASE_URI=os.environ.get(
             "DATABASE_URL", f"sqlite:///{os.path.join(app.instance_path, 'erp.db')}"
         ),
+        APP_NAME=os.environ.get("ERP_APP_NAME", "SWK-ERP"),
         CURRENCY=os.environ.get("ERP_CURRENCY", "$"),
         WTF_CSRF_ENABLED=True,
     )
@@ -34,7 +35,11 @@ def create_app(config=None):
     def inject_globals():
         if "_csrf" not in session:
             session["_csrf"] = secrets.token_hex(16)
-        return {"csrf_token": session["_csrf"], "currency": app.config["CURRENCY"]}
+        return {
+            "csrf_token": session["_csrf"],
+            "currency": app.config["CURRENCY"],
+            "app_name": app.config["APP_NAME"],
+        }
 
     @app.template_filter("money")
     def money(value):
