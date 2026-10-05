@@ -43,6 +43,7 @@
 <script>
 new Chart(document.getElementById('revChart'), {type:'bar',
   data:{labels:{{ chart_labels|tojson }}, datasets:[{label:'Revenue', data:{{ chart_values|tojson }}, backgroundColor:'#3b82f6', borderRadius:4}]},
-  options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}});
+  options:{plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>{{ currency|tojson }}+' '+c.parsed.y.toLocaleString('en-MY',{minimumFractionDigits:2})}}},
+  scales:{y:{beginAtZero:true, ticks:{callback:v=>{{ currency|tojson }}+' '+v.toLocaleString('en-MY')}}}}});
 </script>
 {% endblock %}
