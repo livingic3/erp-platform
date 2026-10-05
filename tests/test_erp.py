@@ -91,3 +91,4 @@ def test_all_pages_render_with_demo_data():
                     "/purchases/1", "/invoices", "/invoices?status=overdue", "/invoices/1", "/users"]:
             assert c.get(url).status_code == 200, url
         assert b"SWK-ERP" in c.get("/").data
+        assert b"RM 12.50" in c.get("/products").data

@@ -24,7 +24,7 @@
 {% block scripts %}
 <script>
 const tbody = document.querySelector('#lines tbody'), tpl = document.getElementById('lineTpl');
-const fmt = v => '{{ currency }}' + v.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmt = v => '{{ currency }} ' + v.toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
 function recalc(){ let t=0; tbody.querySelectorAll('tr').forEach(r=>{ const s=(+r.querySelector('.qty').value||0)*(+r.querySelector('.price').value||0); r.querySelector('.sub').textContent=fmt(s); t+=s;}); document.getElementById('grand').textContent='Total: '+fmt(t); }
 function addLine(){ const r=tpl.content.firstElementChild.cloneNode(true); tbody.appendChild(r);
   r.querySelector('.prod').addEventListener('change',e=>{ const o=e.target.selectedOptions[0]; r.querySelector('.price').value=o.dataset.price||''; recalc(); });

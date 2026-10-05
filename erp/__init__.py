@@ -16,7 +16,7 @@ def create_app(config=None):
             "DATABASE_URL", f"sqlite:///{os.path.join(app.instance_path, 'erp.db')}"
         ),
         APP_NAME=os.environ.get("ERP_APP_NAME", "SWK-ERP"),
-        CURRENCY=os.environ.get("ERP_CURRENCY", "$"),
+        CURRENCY=os.environ.get("ERP_CURRENCY", "RM"),
         WTF_CSRF_ENABLED=True,
     )
     if config:
@@ -43,7 +43,7 @@ def create_app(config=None):
 
     @app.template_filter("money")
     def money(value):
-        return f"{app.config['CURRENCY']}{float(value or 0):,.2f}"
+        return f"{app.config['CURRENCY']} {float(value or 0):,.2f}"
 
     status_colors = {
         "draft": "secondary", "confirmed": "primary", "ordered": "primary",
