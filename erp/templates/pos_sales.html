@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% block title %}POS Sales{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">POS Sales</h3>
+  <form class="d-flex gap-2 align-items-center" method="get">
+    <a class="btn btn-outline-secondary" href="{{ url_for('erp.pos_sales', day=prev_day.isoformat()) }}" title="Previous day"><i class="bi bi-chevron-left"></i></a>
+    <input type="date" name="day" value="{{ day.isoformat() }}" class="form-control" onchange="this.form.submit()">
+    <a class="btn btn-outline-secondary" href="{{ url_for('erp.pos_sales', day=next_day.isoformat()) }}" title="Next day"><i class="bi bi-chevron-right"></i></a>
+    <a class="btn btn-primary text-nowrap" href="{{ url_for('erp.pos') }}"><i class="bi bi-shop"></i> Open register</a>
+  </form>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-md-3"><div class="card stat p-3"><div class="text-muted small">Sales on {{ day.strftime('%d %b %Y') }}</div><div class="fs-4 fw-semibold">{{ total|money }}</div><div class="small text-muted">{{ count }} transaction{{ '' if count == 1 else 's' }}</div></div></div>
+  {% for label, amount in by_method.items() %}
+  <div class="col-md-3"><div class="card stat p-3"><div class="text-muted small">{{ label }}</div><div class="fs-4 fw-semibold">{{ amount|money }}</div></div></div>
+  {% endfor %}
+</div>
+<div class="card"><table class="table table-hover mb-0">
+<thead><tr><th>Receipt</th><th>Time</th><th>Customer</th><th>Cashier</th><th>Payment</th><th>Status</th><th class="text-end">Items</th><th class="text-end">Total</th></tr></thead><tbody>
+{% for s in sales %}<tr><td><a href="{{ url_for('erp.pos_receipt', sid=s.id) }}">{{ s.number }}</a></td><td>{{ s.created_at.strftime('%H:%M') }}</td>
+<td>{{ s.customer.name if s.customer else 'Walk-in' }}</td><td>{{ s.cashier.username }}</td><td>{{ s.payment_label }}</td><td>{{ status_badge(s.status) }}</td>
+<td class="text-end">{{ s.lines|sum(attribute='quantity') }}</td><td class="text-end">{{ s.total|money }}</td></tr>
+{% else %}<tr><td colspan="8" class="text-muted text-center py-4">No POS sales on this day.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

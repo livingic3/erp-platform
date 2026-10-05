@@ -49,6 +49,7 @@ def create_app(config=None):
         "draft": "secondary", "confirmed": "primary", "ordered": "primary",
         "shipped": "info", "received": "success", "invoiced": "success",
         "cancelled": "dark", "paid": "success", "unpaid": "warning",
+        "completed": "success", "voided": "dark",
     }
 
     @app.template_global()

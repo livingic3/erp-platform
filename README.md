@@ -3,8 +3,9 @@
 A lightweight ERP built with Flask + SQLAlchemy (SQLite by default).
 
 ## Modules
-- **Dashboard** – revenue, receivables, inventory value, open orders, low-stock & overdue alerts, 6-month revenue chart
+- **Dashboard** – revenue, receivables, inventory value, open orders, low-stock & overdue alerts, 6-month revenue chart (invoices + POS)
 - **Inventory** – products (SKU, price, cost, reorder level), manual stock adjustments, full stock-movement ledger
+- **Point of Sale** – touch-friendly register (search or scan SKU), cash/card/e-wallet payments with change calculation, printable receipts, daily sales summary, admin void (returns stock)
 - **Sales** – customers, sales orders (draft → confirmed → shipped → invoiced), stock check on confirm, stock deducted on ship
 - **Invoicing** – invoices generated from shipped orders, due dates, overdue tracking, mark paid, printable view
 - **Purchasing** – suppliers, purchase orders (draft → ordered → received), stock and product cost updated on receipt

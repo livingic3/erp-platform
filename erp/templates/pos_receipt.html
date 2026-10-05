@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% block title %}{{ sale.number }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 d-print-none" style="max-width:420px">
+  <h3 class="mb-0">{{ sale.number }} {{ status_badge(sale.status) }}</h3>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+    <a class="btn btn-primary" href="{{ url_for('erp.pos') }}"><i class="bi bi-plus-lg"></i> New sale</a>
+  </div>
+</div>
+<div class="card p-4" style="max-width:420px;font-family:ui-monospace,Menlo,Consolas,monospace">
+  <div class="text-center mb-3">
+    <h5 class="mb-0"><i class="bi bi-boxes"></i> {{ app_name }}</h5>
+    <div class="small">Receipt {{ sale.number }}</div>
+    <div class="small">{{ sale.created_at.strftime('%Y-%m-%d %H:%M') }} · Cashier: {{ sale.cashier.username }}</div>
+    {% if sale.customer %}<div class="small">Customer: {{ sale.customer.name }}</div>{% endif %}
+    {% if sale.status == 'voided' %}<div class="fw-bold text-danger mt-2">*** VOIDED ***</div>{% endif %}
+  </div>
+  <table class="table table-sm small mb-2"><tbody>
+  {% for l in sale.lines %}<tr><td>{{ l.product.name }}<div class="text-muted">{{ l.quantity }} × {{ l.unit_price|money }}</div></td><td class="text-end text-nowrap">{{ l.subtotal|money }}</td></tr>{% endfor %}
+  </tbody></table>
+  <div class="d-flex justify-content-between fw-bold fs-5"><span>TOTAL</span><span>{{ sale.total|money }}</span></div>
+  <div class="d-flex justify-content-between small"><span>Paid ({{ sale.payment_label }})</span><span>{{ sale.tendered|money }}</span></div>
+  {% if sale.payment_method == 'cash' %}<div class="d-flex justify-content-between small"><span>Change</span><span>{{ sale.change|money }}</span></div>{% endif %}
+  <div class="text-center small text-muted mt-3">Thank you!</div>
+</div>
+{% if sale.status == 'completed' and g.user.role == 'admin' %}
+<form method="post" action="{{ url_for('erp.pos_void', sid=sale.id) }}" class="mt-3 d-print-none" onsubmit="return confirm('Void {{ sale.number }} and return its items to stock?')">
+  <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+  <button class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> Void sale</button>
+</form>
+{% endif %}
+{% endblock %}

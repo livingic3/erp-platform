@@ -26,6 +26,8 @@
     {% set kind = request.view_args.get('kind') if request.view_args else None %}
     <a href="{{ url_for('erp.dashboard') }}" class="{{ 'active' if ep=='erp.dashboard' }}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>
     <div class="section">Sales</div>
+    <a href="{{ url_for('erp.pos') }}" class="{{ 'active' if ep=='erp.pos' }}"><i class="bi bi-shop me-2"></i>Point of Sale</a>
+    <a href="{{ url_for('erp.pos_sales') }}" class="{{ 'active' if ep in ('erp.pos_sales', 'erp.pos_receipt') }}"><i class="bi bi-receipt-cutoff me-2"></i>POS Sales</a>
     <a href="{{ url_for('erp.orders', kind='sales') }}" class="{{ 'active' if kind=='sales' }}"><i class="bi bi-cart-check me-2"></i>Sales Orders</a>
     <a href="{{ url_for('erp.invoices') }}" class="{{ 'active' if ep and ep.startswith('erp.invoice') }}"><i class="bi bi-receipt me-2"></i>Invoices</a>
     <a href="{{ url_for('erp.partners', kind='customers') }}" class="{{ 'active' if kind=='customers' }}"><i class="bi bi-people me-2"></i>Customers</a>
