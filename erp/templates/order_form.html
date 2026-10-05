@@ -9,7 +9,7 @@
     {% for p in partners %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select></div>
   <table class="table align-middle" id="lines"><thead><tr><th>Product</th><th style="width:120px">Qty</th><th style="width:160px">{{ 'Unit price' if kind=='sales' else 'Unit cost' }}</th><th style="width:140px" class="text-end">Subtotal</th><th></th></tr></thead>
   <tbody></tbody>
-  <tfoot><tr><td colspan="3"><button type="button" class="btn btn-sm btn-outline-primary" id="addLine"><i class="bi bi-plus"></i> Add line</button></td><td class="text-end fw-semibold" id="grand"></td><td></td></tr></tfoot></table>
+  <tfoot><tr><td colspan="3"><button type="button" class="btn btn-sm btn-outline-primary" id="addLine"><i class="bi bi-plus"></i> Add line</button></td><td class="text-end fw-semibold text-nowrap" id="grand"></td><td></td></tr></tfoot></table>
   <button class="btn btn-primary">Create order</button> <a href="{{ url_for('erp.orders', kind=kind) }}" class="btn btn-link">Cancel</a>
 </form></div>
 <template id="lineTpl"><tr>
