@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block title %}{{ label }}{% endblock %}
+{% block content %}
+<h3 class="mb-3">{{ ('Edit ' ~ partner.name) if partner.id else ('New ' ~ label|lower) }}</h3>
+<div class="card p-4" style="max-width:640px">
+<form method="post">
+  <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+  {% for f, t in [('name','text'),('email','email'),('phone','text'),('address','text')] %}
+  <div class="mb-3"><label class="form-label text-capitalize">{{ f }}</label><input name="{{ f }}" type="{{ t }}" class="form-control" value="{{ partner[f] or '' }}" {{ 'required' if f=='name' }}></div>
+  {% endfor %}
+  <button class="btn btn-primary">Save</button> <a href="{{ url_for('erp.partners', kind=kind) }}" class="btn btn-link">Cancel</a>
+</form></div>
+{% endblock %}

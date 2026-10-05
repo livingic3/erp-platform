@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block title %}{{ label }}s{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3>{{ label }}s</h3>
+  <a href="{{ url_for('erp.partner_form', kind=kind) }}" class="btn btn-primary btn-sm"><i class="bi bi-plus"></i> New {{ label|lower }}</a>
+</div>
+<div class="card"><table class="table table-hover mb-0">
+<thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Address</th><th class="text-end">Orders</th></tr></thead><tbody>
+{% for p in partners %}<tr><td><a href="{{ url_for('erp.partner_form', kind=kind, pid=p.id) }}">{{ p.name }}</a></td><td>{{ p.email }}</td><td>{{ p.phone }}</td><td>{{ p.address }}</td>
+<td class="text-end">{{ (p.sales_orders if kind=='customers' else p.purchase_orders)|length }}</td></tr>
+{% else %}<tr><td colspan="5" class="text-muted text-center py-4">None yet.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

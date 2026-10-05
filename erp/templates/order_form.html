@@ -1,0 +1,35 @@
+{% extends "base.html" %}{% block title %}New order{% endblock %}
+{% block content %}
+<h3 class="mb-3">New {{ 'sales' if kind=='sales' else 'purchase' }} order</h3>
+<div class="card p-4">
+<form method="post" id="orderForm">
+  <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+  <div class="mb-3" style="max-width:400px"><label class="form-label">{{ cfg.partner_label }}</label>
+    <select name="partner_id" class="form-select" required><option value="">Select…</option>
+    {% for p in partners %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select></div>
+  <table class="table align-middle" id="lines"><thead><tr><th>Product</th><th style="width:120px">Qty</th><th style="width:160px">{{ 'Unit price' if kind=='sales' else 'Unit cost' }}</th><th style="width:140px" class="text-end">Subtotal</th><th></th></tr></thead>
+  <tbody></tbody>
+  <tfoot><tr><td colspan="3"><button type="button" class="btn btn-sm btn-outline-primary" id="addLine"><i class="bi bi-plus"></i> Add line</button></td><td class="text-end fw-semibold" id="grand"></td><td></td></tr></tfoot></table>
+  <button class="btn btn-primary">Create order</button> <a href="{{ url_for('erp.orders', kind=kind) }}" class="btn btn-link">Cancel</a>
+</form></div>
+<template id="lineTpl"><tr>
+  <td><select name="product_id" class="form-select form-select-sm prod" required><option value="">Select…</option>
+  {% for p in products %}<option value="{{ p.id }}" data-price="{{ p[cfg.price_field] }}" data-stock="{{ p.qty_on_hand }}">{{ p.sku }} · {{ p.name }} ({{ p.qty_on_hand }} on hand)</option>{% endfor %}</select></td>
+  <td><input name="quantity" type="number" min="1" value="1" class="form-control form-control-sm qty" required></td>
+  <td><input name="price" type="number" step="0.01" min="0" class="form-control form-control-sm price"></td>
+  <td class="text-end sub"></td>
+  <td><button type="button" class="btn btn-sm btn-link text-danger rm"><i class="bi bi-trash"></i></button></td>
+</tr></template>
+{% endblock %}
+{% block scripts %}
+<script>
+const tbody = document.querySelector('#lines tbody'), tpl = document.getElementById('lineTpl');
+const fmt = v => '{{ currency }}' + v.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+function recalc(){ let t=0; tbody.querySelectorAll('tr').forEach(r=>{ const s=(+r.querySelector('.qty').value||0)*(+r.querySelector('.price').value||0); r.querySelector('.sub').textContent=fmt(s); t+=s;}); document.getElementById('grand').textContent='Total: '+fmt(t); }
+function addLine(){ const r=tpl.content.firstElementChild.cloneNode(true); tbody.appendChild(r);
+  r.querySelector('.prod').addEventListener('change',e=>{ const o=e.target.selectedOptions[0]; r.querySelector('.price').value=o.dataset.price||''; recalc(); });
+  r.querySelectorAll('input').forEach(i=>i.addEventListener('input',recalc));
+  r.querySelector('.rm').addEventListener('click',()=>{ r.remove(); recalc(); }); recalc(); }
+document.getElementById('addLine').addEventListener('click',addLine); addLine();
+</script>
+{% endblock %}

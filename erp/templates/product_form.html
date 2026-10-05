@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% block title %}Product{% endblock %}
+{% block content %}
+<h3 class="mb-3">{{ 'Edit ' ~ product.sku if product.id else 'New product' }}</h3>
+<div class="card p-4" style="max-width:720px">
+<form method="post">
+  <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+  <div class="row g-3">
+    <div class="col-md-4"><label class="form-label">SKU</label><input name="sku" class="form-control" value="{{ request.form.sku or product.sku or '' }}" required></div>
+    <div class="col-md-8"><label class="form-label">Name</label><input name="name" class="form-control" value="{{ request.form.name or product.name or '' }}" required></div>
+    <div class="col-md-4"><label class="form-label">Category</label><input name="category" class="form-control" value="{{ request.form.category or product.category or '' }}"></div>
+    <div class="col-md-4"><label class="form-label">Sale price</label><input name="unit_price" type="number" step="0.01" min="0" class="form-control" value="{{ request.form.unit_price or product.unit_price or 0 }}"></div>
+    <div class="col-md-4"><label class="form-label">Cost</label><input name="cost" type="number" step="0.01" min="0" class="form-control" value="{{ request.form.cost or product.cost or 0 }}"></div>
+    <div class="col-md-4"><label class="form-label">Reorder level</label><input name="reorder_level" type="number" min="0" class="form-control" value="{{ request.form.reorder_level or product.reorder_level or 0 }}"></div>
+    {% if not product.id %}
+    <div class="col-md-4"><label class="form-label">Opening stock</label><input name="qty_on_hand" type="number" min="0" class="form-control" value="{{ request.form.qty_on_hand or 0 }}"></div>
+    {% else %}
+    <div class="col-md-4"><label class="form-label">On hand</label><input class="form-control" value="{{ product.qty_on_hand }}" disabled><div class="form-text">Change via stock adjustment, sales or purchases.</div></div>
+    {% endif %}
+  </div>
+  <div class="mt-4"><button class="btn btn-primary">Save</button> <a href="{{ url_for('erp.products') }}" class="btn btn-link">Cancel</a></div>
+</form></div>
+{% endblock %}

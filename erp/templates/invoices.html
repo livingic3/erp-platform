@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% block title %}Invoices{% endblock %}
+{% block content %}
+<h3 class="mb-3">Invoices</h3>
+<ul class="nav nav-pills mb-3">
+  {% for s,l in [('','All'),('unpaid','Unpaid'),('overdue','Overdue'),('paid','Paid')] %}<li class="nav-item"><a class="nav-link {{ 'active' if status==s }}" href="{{ url_for('erp.invoices', status=s or None) }}">{{ l }}</a></li>{% endfor %}
+</ul>
+<div class="card"><table class="table table-hover mb-0">
+<thead><tr><th>Invoice</th><th>Customer</th><th>Order</th><th>Issued</th><th>Due</th><th>Status</th><th class="text-end">Amount</th></tr></thead><tbody>
+{% for i in invoices %}<tr><td><a href="{{ url_for('erp.invoice_detail', iid=i.id) }}">{{ i.number }}</a></td><td>{{ i.sales_order.customer.name }}</td>
+<td><a href="{{ url_for('erp.order_detail', kind='sales', oid=i.sales_order.id) }}">{{ i.sales_order.number }}</a></td><td>{{ i.issue_date }}</td><td>{{ i.due_date }}</td>
+<td>{{ status_badge(i.status) }}{% if i.overdue %} <span class="badge bg-danger">overdue</span>{% endif %}</td><td class="text-end">{{ i.amount|money }}</td></tr>
+{% else %}<tr><td colspan="7" class="text-muted text-center py-4">No invoices.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

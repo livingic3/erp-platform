@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% block title %}Stock Movements{% endblock %}
+{% block content %}
+<h3 class="mb-3">Stock movements</h3>
+<div class="card"><table class="table table-sm mb-0">
+<thead><tr><th>When</th><th>Product</th><th>Reason</th><th>Reference</th><th class="text-end">Change</th></tr></thead><tbody>
+{% for m in movements %}<tr><td>{{ m.created_at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ m.product.sku }} · {{ m.product.name }}</td><td class="text-capitalize">{{ m.reason }}</td><td>{{ m.reference }}</td>
+<td class="text-end {{ 'text-success' if m.change > 0 else 'text-danger' }}">{{ '%+d'|format(m.change) }}</td></tr>
+{% else %}<tr><td colspan="5" class="text-muted text-center py-4">No movements yet.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

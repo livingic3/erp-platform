@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% block title %}{{ cfg.title }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3>{{ cfg.title }}</h3>
+  <a href="{{ url_for('erp.order_new', kind=kind) }}" class="btn btn-primary btn-sm"><i class="bi bi-plus"></i> New order</a>
+</div>
+<ul class="nav nav-pills mb-3">
+  <li class="nav-item"><a class="nav-link {{ 'active' if not status }}" href="{{ url_for('erp.orders', kind=kind) }}">All</a></li>
+  {% for s in statuses %}<li class="nav-item"><a class="nav-link text-capitalize {{ 'active' if status==s }}" href="{{ url_for('erp.orders', kind=kind, status=s) }}">{{ s }}</a></li>{% endfor %}
+</ul>
+<div class="card"><table class="table table-hover mb-0">
+<thead><tr><th>Order</th><th>{{ cfg.partner_label }}</th><th>Date</th><th>Status</th><th class="text-end">Lines</th><th class="text-end">Total</th></tr></thead><tbody>
+{% for o in orders %}<tr><td><a href="{{ url_for('erp.order_detail', kind=kind, oid=o.id) }}">{{ o.number }}</a></td><td>{{ o[cfg.partner_field].name }}</td><td>{{ o.order_date }}</td><td>{{ status_badge(o.status) }}</td><td class="text-end">{{ o.lines|length }}</td><td class="text-end">{{ o.total|money }}</td></tr>
+{% else %}<tr><td colspan="6" class="text-muted text-center py-4">No orders.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

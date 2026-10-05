@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% block title %}{{ invoice.number }}{% endblock %}
+{% block content %}
+{% set so = invoice.sales_order %}
+<div class="d-flex justify-content-between align-items-center mb-3 d-print-none">
+  <h3>{{ invoice.number }} {{ status_badge(invoice.status) }}{% if invoice.overdue %} <span class="badge bg-danger">overdue</span>{% endif %}</h3>
+  <div class="d-flex gap-2">
+    {% if invoice.status == 'unpaid' %}<form method="post" action="{{ url_for('erp.invoice_pay', iid=invoice.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="btn btn-success"><i class="bi bi-check2-circle"></i> Mark paid</button></form>{% endif %}
+    <button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+  </div>
+</div>
+<div class="card p-5" style="max-width:860px">
+  <div class="d-flex justify-content-between mb-4">
+    <div><h4 class="mb-0"><i class="bi bi-boxes"></i> Nimbus ERP</h4></div>
+    <div class="text-end"><h5 class="mb-1">INVOICE {{ invoice.number }}</h5><div class="small">Issued {{ invoice.issue_date }} · Due {{ invoice.due_date }}</div>
+    {% if invoice.paid_date %}<div class="small text-success">Paid {{ invoice.paid_date }}</div>{% endif %}</div>
+  </div>
+  <div class="mb-4"><div class="text-muted small">Bill to</div><div class="fw-semibold">{{ so.customer.name }}</div><div class="small">{{ so.customer.address }}</div><div class="small">{{ so.customer.email }}</div>
+  <div class="small mt-1">Ref: <a href="{{ url_for('erp.order_detail', kind='sales', oid=so.id) }}">{{ so.number }}</a></div></div>
+  <table class="table"><thead><tr><th>Item</th><th class="text-end">Qty</th><th class="text-end">Unit price</th><th class="text-end">Amount</th></tr></thead><tbody>
+  {% for l in so.lines %}<tr><td>{{ l.product.name }} <span class="text-muted small">({{ l.product.sku }})</span></td><td class="text-end">{{ l.quantity }}</td><td class="text-end">{{ l.unit_price|money }}</td><td class="text-end">{{ l.subtotal|money }}</td></tr>{% endfor %}
+  </tbody><tfoot><tr><th colspan="3" class="text-end">Total due</th><th class="text-end fs-5">{{ invoice.amount|money }}</th></tr></tfoot></table>
+</div>
+{% endblock %}
